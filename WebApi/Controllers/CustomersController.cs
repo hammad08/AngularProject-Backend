@@ -38,7 +38,7 @@ namespace WebApi.Controllers
             var customer = await _context.customers.Where(d => d.firstName==firstName && d.lastName==lastName)
                 .Include(b => b.addresses)
                 .ThenInclude(p => p.phones)
-                .FirstOrDefaultAsync(h => h.firstName == firstName && h.lastName == lastName);
+                .FirstOrDefaultAsync();
 
             if (customer == null)
             {
@@ -83,55 +83,73 @@ namespace WebApi.Controllers
 
         // PUT: api/Customers/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutCustomer(int id, Customer customer)
-        {
-            _context.Entry(customer).State = ToEntityState(customer.StateEnum);
+        //[HttpPut("{id}")]
+        //public async Task<IActionResult> PutCustomer(int id, Customer customer)
+        //{
 
-            customer.addresses.ForEach(a =>
-            {
-                if (a.addressId == 0) a.StateEnum = state.Added;
-                _context.Entry(a).State = ToEntityState(a.StateEnum);
-                a.phones.ForEach(p =>
-                {
-                    if (p.phoneId == 0) p.StateEnum = state.Added;
-                    _context.Entry(p).State = ToEntityState(p.StateEnum);
-                });
-            });
             
-            if (id != customer.customerId)
-            {
-                return BadRequest();
-            }
+
+        //    ////logic#01
+        //    //_context.Entry(customer).State = ToEntityState(customer.StateEnum);
+
+        //    //customer.addresses.ForEach(a =>
+        //    //{
+        //    //    if (a.addressId == 0) a.StateEnum = state.Added;
+        //    //    _context.Entry(a).State = ToEntityState(a.StateEnum);
+        //    //    a.phones.ForEach(p =>
+        //    //    {
+        //    //        if (p.phoneId == 0) p.StateEnum = state.Added;
+        //    //        _context.Entry(p).State = ToEntityState(p.StateEnum);
+        //    //    });
+        //    //});
+            
+        //    //if (id != customer.customerId)
+        //    //{
+        //    //    return BadRequest();
+        //    //}
 
 
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!CustomerExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
+        //    try
+        //    {
+        //        await _context.SaveChangesAsync();
+        //        return Ok(customer);
+        //    }
+        //    catch (DbUpdateConcurrencyException)
+        //    {
+        //        if (!CustomerExists(id))
+        //        {
+        //            return NotFound();
+        //        }
+        //        else
+        //        {
+        //            throw;
+        //        }
+        //    }
 
-            return NoContent();
-        }
+        //    return NoContent();
+        //}
 
         // POST: api/Customers
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
         public async Task<ActionResult<Customer>> PostCustomer(Customer customer)
         {
-            _context.customers.Add(customer);
-            await _context.SaveChangesAsync();
+            if (customer.customerId == 0)
+            {
+                await _context.customers.AddAsync(customer);
+            }
+            else
+            {
+                _context.ChangeTracker.TrackGraph(customer, p =>
+                {
+                    var entity = (BaseModel)p.Entry.Entity;
+                    p.Entry.State = entity.StateEnum == state.Added ? EntityState.Added :
+                    entity.StateEnum == state.Modified ? EntityState.Modified :
+                    entity.StateEnum == state.Deleted ? EntityState.Deleted : EntityState.Unchanged;
+                });
+            }
 
+            await _context.SaveChangesAsync();
             return Ok(customer);
         }
 
